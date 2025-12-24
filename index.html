@@ -387,7 +387,7 @@
 
             const createCertificateHtml = (details) => {
                 const certificateDate = formatCertificateDate(details.date);
-                const eventText = `in the workshop on ${details.event} held on ${certificateDate} organized by IEDC@SAINTGITS.`;
+                const eventText = `in on ${details.event} held on ${certificateDate} organized by IEDC@SAINTGITS.`;
                 const description = generateCertificateDescription(details.role, eventText);
                 const uniqueKey = generateUniqueKey(details.name);
 
