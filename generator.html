@@ -1,0 +1,489 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Certificate Generator - Certificate System</title>
+
+    <!-- Local Offline CSS -->
+    <link rel="stylesheet" href="css/main.css">
+
+    <!-- Local Offline JS Libraries -->
+    <script src="lib/xlsx.full.min.js"></script>
+    <script src="lib/qrcode.min.js"></script>
+    <script src="lib/jszip.min.js"></script>
+    <script src="lib/jspdf.umd.min.js"></script>
+    
+    <script src="js/storage.js"></script>
+    <script src="js/excel-parser.js"></script>
+    <script src="js/column-mapper.js"></script>
+    <script src="js/qr-generator.js"></script>
+    <script src="js/certificate-generator.js"></script>
+    <script src="js/app.js"></script>
+</head>
+<body>
+
+    <!-- Header Navigation -->
+    <nav class="navbar">
+        <a href="index.html" class="nav-brand">
+            <span>Certificate System</span>
+        </a>
+        <div class="nav-links">
+            <a href="index.html" class="nav-link">Home</a>
+            <a href="templates.html" class="nav-link">Template Manager</a>
+            <a href="generator.html" class="nav-link active">Generate Certificates</a>
+        </div>
+    </nav>
+
+    <!-- Main Container -->
+    <main class="container">
+        <div class="page-header">
+            <h1 class="page-title">Page 2: Certificate Generator</h1>
+            <p class="page-subtitle">Select a saved template, pick certificate wording type, upload recipient data, and generate offline certificates.</p>
+        </div>
+
+        <!-- Step 1: Select Saved Template -->
+        <section class="card">
+            <h2 class="card-title">STEP 1: SELECT CERTIFICATE TEMPLATE</h2>
+            <div id="template-selector-grid" class="grid-3">
+                <p style="color: var(--text-muted);">Loading saved templates...</p>
+            </div>
+
+            <!-- Selected Template Banner -->
+            <div id="selected-template-banner" style="display: none; margin-top: 1.5rem; background: #eff6ff; border: 1px solid #bfdbfe; padding: 1rem 1.25rem; border-radius: 8px; align-items: center; justify-content: space-between;">
+                <div>
+                    <span style="font-weight: 700; color: var(--primary-color);">Selected Template:</span>
+                    <span id="selected-template-name" style="font-weight: 600; margin-left: 0.5rem;">-</span>
+                </div>
+                <button class="btn btn-secondary btn-sm" onclick="clearSelectedTemplate()">Change Template</button>
+            </div>
+        </section>
+
+        <!-- Step 2: Select Certificate Type & Edit Wording -->
+        <section id="step-2-section" class="card" style="display: none;">
+            <h2 class="card-title">STEP 2: SELECT CERTIFICATE TYPE & EDIT WORDING</h2>
+            <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 1rem;">
+                Select a certificate type preset or edit the wording template directly below.
+            </p>
+
+            <div style="max-width: 560px;">
+                <div class="form-group">
+                    <label class="form-label">Certificate Type Preset</label>
+                    <select id="cert-type-select" class="form-select" onchange="onCertTypePresetChanged()">
+                        <option value="Participation">Participation</option>
+                        <option value="First Prize">First Prize</option>
+                        <option value="Second Prize">Second Prize</option>
+                        <option value="Contribution">Contribution</option>
+                        <option value="Custom">Custom Wording</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Edit Certificate Wording Template</label>
+                    <textarea id="wording-template-input" class="form-control" rows="3" style="resize: vertical; font-size: 1.05rem;" oninput="updateWordingPreview()"></textarea>
+                    <small style="color: var(--text-muted); font-size: 0.85rem; margin-top: 0.375rem; display: block;">
+                        Available Placeholders: <code>{event}</code>, <code>{date}</code>, <code>{role}</code>, <code>{name}</code>
+                    </small>
+                </div>
+
+                <!-- Wording Preview Box -->
+                <div style="background: #f8fafc; border: 1px solid var(--border-color); padding: 1rem; border-radius: 8px; font-size: 0.95rem;">
+                    <div style="font-weight: 700; color: var(--text-muted); margin-bottom: 0.25rem;">Live Sample Preview:</div>
+                    <div id="wording-preview-text" style="font-family: Georgia, serif; font-style: italic; color: #1e293b; line-height: 1.4;"></div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Step 3: Excel / CSV Upload & Column Mapping -->
+        <section id="step-3-section" class="card" style="display: none;">
+            <h2 class="card-title">STEP 3: UPLOAD EXCEL / CSV DATA</h2>
+            
+            
+
+            <!-- Excel Sheet Format Guide -->
+            <div style="margin-top: 1rem; background: #f8fafc; border: 1px solid var(--border-color); padding: 1rem 1.25rem; border-radius: 8px;">
+                <div style="font-weight: 700; font-size: 0.95rem; margin-bottom: 0.35rem; color: var(--text-main);">
+                  
+                </div>
+                <div style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 0.75rem;">
+                    Your first row must contain column headers. Example structure:
+                </div>
+                <div style="overflow-x: auto;">
+                    <table style="width: 100%; border-collapse: collapse; font-size: 0.85rem; text-align: left; background: #ffffff; border: 1px solid var(--border-color);">
+                        <thead>
+                            <tr style="background: #e2e8f0; font-weight: 700;">
+                                <th style="padding: 6px 12px; border: 1px solid var(--border-color);">Name</th>
+                                <th style="padding: 6px 12px; border: 1px solid var(--border-color);">Event</th>
+                                <th style="padding: 6px 12px; border: 1px solid var(--border-color);">Date</th>
+                                <th style="padding: 6px 12px; border: 1px solid var(--border-color);">Role</th>
+                                <th style="padding: 6px 12px; border: 1px solid var(--border-color);">Batch</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td style="padding: 6px 12px; border: 1px solid var(--border-color);">Hari</td>
+                                <td style="padding: 6px 12px; border: 1px solid var(--border-color);">Iedc Workshop</td>
+                                <td style="padding: 6px 12px; border: 1px solid var(--border-color);">12-09-2026</td>
+                                <td style="padding: 6px 12px; border: 1px solid var(--border-color);">first</td>
+                                <td style="padding: 6px 12px; border: 1px solid var(--border-color);">CSE</td>
+                            </tr>
+                            <tr>
+                                <td style="padding: 6px 12px; border: 1px solid var(--border-color);">Steny</td>
+                                <td style="padding: 6px 12px; border: 1px solid var(--border-color);">Iedc Workshop</td>
+                                <td style="padding: 6px 12px; border: 1px solid var(--border-color);">12-09-2026</td>
+                                <td style="padding: 6px 12px; border: 1px solid var(--border-color);">participant</td>
+                                <td style="padding: 6px 12px; border: 1px solid var(--border-color);">CSE</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div id="data-drop-zone" class="drop-zone" onclick="document.getElementById('excel-file-input').click()">
+                <div class="drop-zone-icon"></div>
+                <div class="drop-zone-text">Click or Drag & Drop Excel or CSV file here</div>
+                <div class="drop-zone-subtext">Supports .csv, .xlsx, .xls (Processes 100% offline)</div>
+                <input type="file" id="excel-file-input" accept=".csv, .xlsx, .xls" style="display: none;">
+            </div>
+
+            <!-- Column Mapping Interface -->
+            <div id="column-mapping-box" style="display: none; margin-top: 1.5rem; background: #f8fafc; border: 1px solid var(--border-color); padding: 1.25rem; border-radius: 8px;">
+                <h3 style="font-size: 1.05rem; font-weight: 700; margin-bottom: 0.75rem;">Map Excel Columns to Certificate Fields</h3>
+                <p style="color: var(--text-muted); font-size: 0.875rem; margin-bottom: 1rem;">
+                    Match your Excel columns to the required certificate data fields below:
+                </p>
+
+                <div id="mapping-selectors-container" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem;"></div>
+
+                <button class="btn btn-primary" style="margin-top: 1.25rem;" onclick="confirmColumnMapping()">Confirm Mapping & Continue →</button>
+            </div>
+
+            <!-- Data Summary Banner -->
+            <div id="data-summary-banner" style="display: none; margin-top: 1.5rem; background: #dcfce7; border: 1px solid #86efac; padding: 1rem 1.25rem; border-radius: 8px; display: flex; align-items: center; justify-content: space-between;">
+                <div>
+                    <span style="font-weight: 700; color: #15803d;">Participants Detected:</span>
+                    <span id="data-row-count-badge" class="badge badge-success" style="margin-left: 0.5rem; font-size: 1rem;">0</span>
+                </div>
+                <button id="start-generation-btn" class="btn btn-success btn-lg" onclick="startBatchGeneration()">GENERATE CERTIFICATES</button>
+            </div>
+        </section>
+
+        <!-- Step 4: Generation Progress & Results -->
+        <section id="step-4-section" class="card" style="display: none;">
+            <h2 class="card-title" style="justify-content: space-between;">
+                <span>STEP 4: GENERATED CERTIFICATES</span>
+                <button id="download-zip-btn" class="btn btn-success" style="display: none;" onclick="downloadAllZipClick()">📦 DOWNLOAD ALL AS ZIP</button>
+            </h2>
+
+            <!-- Progress Bar -->
+            <div id="generation-progress-box" class="progress-container" style="display: none;">
+                <div style="font-weight: 600; font-size: 0.95rem; margin-bottom: 0.5rem;">Generating Certificates Offline...</div>
+                <div class="progress-bar">
+                    <div id="progress-fill-bar" class="progress-fill"></div>
+                </div>
+                <div id="progress-text-label" class="progress-text">0 / 0</div>
+            </div>
+
+            <!-- Generated Certificates Grid -->
+            <div id="generated-certs-grid" class="grid-2" style="margin-top: 1.5rem;"></div>
+        </section>
+    </main>
+
+    <footer>
+        Offline Certificate System • IEDC @ SAINTGITS
+    </footer>
+
+    <!-- Page Logic -->
+    <script>
+        let selectedTemplateObj = null;
+        let parsedSpreadsheetData = null; // { headers, rows, rowCount }
+        let currentColumnMapping = {};
+        let normalizedParticipantRows = [];
+        let lastGeneratedCertResults = [];
+
+        document.addEventListener('DOMContentLoaded', async () => {
+            initExcelDropZone();
+            await loadTemplateSelector();
+
+            // Check if templateId passed in URL query
+            const urlParams = new URLSearchParams(window.location.search);
+            const tplId = urlParams.get('templateId');
+            if (tplId) {
+                selectTemplate(tplId);
+            }
+        });
+
+        // Step 1: Load Saved Templates
+        async function loadTemplateSelector() {
+            const grid = document.getElementById('template-selector-grid');
+            grid.innerHTML = '<p style="color: var(--text-muted);">Loading saved templates...</p>';
+
+            const templates = await StorageManager.getAllTemplates();
+
+            if (templates.length === 0) {
+                grid.innerHTML = `
+                    <div style="grid-column: 1/-1; background: #fff7ed; border: 1px solid #ffedd5; padding: 1.25rem; border-radius: 8px;">
+                        <p style="color: #c2410c; font-weight: 600;">No saved templates found in local storage.</p>
+                        <a href="templates.html" class="btn btn-primary btn-sm" style="margin-top: 0.75rem;">+ Create Template in Template Manager</a>
+                    </div>
+                `;
+                return;
+            }
+
+            grid.innerHTML = '';
+            templates.forEach(tpl => {
+                const card = document.createElement('div');
+                card.className = `template-card ${selectedTemplateObj && selectedTemplateObj.id === tpl.id ? 'selected' : ''}`;
+                card.id = `tpl-card-${tpl.id}`;
+                card.innerHTML = `
+                    <div class="template-thumb">
+                        <img src="${tpl.backgroundImage}" alt="${tpl.name}">
+                    </div>
+                    <div class="template-card-body">
+                        <h3 class="template-card-title">${tpl.name}</h3>
+                        <div class="template-card-meta">${tpl.width} × ${tpl.height} px • ${tpl.fields.length} Fields</div>
+                        <div class="template-card-actions">
+                            <button class="btn btn-primary btn-sm" style="width: 100%;" onclick="selectTemplate('${tpl.id}')">Select Template</button>
+                        </div>
+                    </div>
+                `;
+                grid.appendChild(card);
+            });
+        }
+
+        async function selectTemplate(id) {
+            const tpl = await StorageManager.getTemplateById(id);
+            if (!tpl) return;
+
+            selectedTemplateObj = tpl;
+            document.getElementById('selected-template-name').textContent = tpl.name;
+            document.getElementById('selected-template-banner').style.display = 'flex';
+
+            // Highlight card
+            document.querySelectorAll('.template-card').forEach(c => c.classList.remove('selected'));
+            const card = document.getElementById(`tpl-card-${tpl.id}`);
+            if (card) card.classList.add('selected');
+
+            // Show Step 2 & Step 3
+            document.getElementById('step-2-section').style.display = 'block';
+            document.getElementById('step-3-section').style.display = 'block';
+
+            onCertTypePresetChanged();
+        }
+
+        function clearSelectedTemplate() {
+            selectedTemplateObj = null;
+            document.getElementById('selected-template-banner').style.display = 'none';
+            document.getElementById('step-2-section').style.display = 'none';
+            document.getElementById('step-3-section').style.display = 'none';
+            document.querySelectorAll('.template-card').forEach(c => c.classList.remove('selected'));
+        }
+
+        // Step 2: Wording Preset & Live Preview
+        const WORDING_PRESETS = {
+            'Participation': 'has actively participated in {event} held on {date} organized by IEDC@SAINTGITS.',
+            'First Prize': 'for securing First Prize in {event} held on {date} organized by IEDC@SAINTGITS.',
+            'Second Prize': 'for securing Second Prize in {event} held on {date} organized by IEDC@SAINTGITS.',
+            'Contribution': 'for valuable contribution as a {role} in {event} held on {date} organized by IEDC@SAINTGITS.',
+            'Custom': 'has successfully completed {event} held on {date}.'
+        };
+
+        function onCertTypePresetChanged() {
+            const preset = document.getElementById('cert-type-select').value;
+            const textarea = document.getElementById('wording-template-input');
+            if (WORDING_PRESETS[preset]) {
+                textarea.value = WORDING_PRESETS[preset];
+            }
+            updateWordingPreview();
+        }
+
+        function updateWordingPreview() {
+            const templateText = document.getElementById('wording-template-input').value;
+            const certType = document.getElementById('cert-type-select').value;
+            const previewEl = document.getElementById('wording-preview-text');
+
+            const sampleWording = CertificateGenerator.generateCertificateDescription(
+                certType,
+                'participant',
+                'Cycle of Innovation',
+                '26-09-2025',
+                'Abhijith Santhosh',
+                templateText
+            );
+            previewEl.textContent = `"${sampleWording}"`;
+        }
+
+        // Step 3: Excel Drop Zone
+        function initExcelDropZone() {
+            const dropZone = document.getElementById('data-drop-zone');
+            const fileInput = document.getElementById('excel-file-input');
+
+            dropZone.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                dropZone.classList.add('drag-over');
+            });
+
+            dropZone.addEventListener('dragleave', () => {
+                dropZone.classList.remove('drag-over');
+            });
+
+            dropZone.addEventListener('drop', (e) => {
+                e.preventDefault();
+                dropZone.classList.remove('drag-over');
+                if (e.dataTransfer.files.length > 0) {
+                    processSpreadsheetFile(e.dataTransfer.files[0]);
+                }
+            });
+
+            fileInput.addEventListener('change', (e) => {
+                if (e.target.files.length > 0) {
+                    processSpreadsheetFile(e.target.files[0]);
+                }
+            });
+        }
+
+        async function processSpreadsheetFile(file) {
+            try {
+                parsedSpreadsheetData = await ExcelParser.parseFile(file);
+                
+                // Try auto-mapping headers
+                const autoMap = ColumnMapper.autoMapHeaders(parsedSpreadsheetData.headers);
+                currentColumnMapping = autoMap.mapping;
+
+                if (autoMap.isComplete) {
+                    // Auto mapping succeeded
+                    document.getElementById('column-mapping-box').style.display = 'none';
+                    applyMappingAndReady();
+                } else {
+                    // Show column mapping interface
+                    renderColumnMappingUI(parsedSpreadsheetData.headers, autoMap.mapping);
+                }
+            } catch (err) {
+                alert(`Error processing file: ${err.message}`);
+            }
+        }
+
+        function renderColumnMappingUI(headers, currentMapping) {
+            const container = document.getElementById('mapping-selectors-container');
+            container.innerHTML = '';
+
+            ColumnMapper.REQUIRED_FIELDS.forEach(field => {
+                const group = document.createElement('div');
+                group.className = 'form-group';
+                
+                let optionsHtml = `<option value="">-- Select Column --</option>`;
+                headers.forEach(h => {
+                    const selected = currentMapping[field.key] === h ? 'selected' : '';
+                    optionsHtml += `<option value="${h}" ${selected}>${h}</option>`;
+                });
+
+                group.innerHTML = `
+                    <label class="form-label">${field.label}</label>
+                    <select id="map-select-${field.key}" class="form-select">${optionsHtml}</select>
+                `;
+                container.appendChild(group);
+            });
+
+            document.getElementById('column-mapping-box').style.display = 'block';
+            document.getElementById('data-summary-banner').style.display = 'none';
+        }
+
+        function confirmColumnMapping() {
+            ColumnMapper.REQUIRED_FIELDS.forEach(field => {
+                const val = document.getElementById(`map-select-${field.key}`).value;
+                currentColumnMapping[field.key] = val;
+            });
+
+            if (!currentColumnMapping.student_name || !currentColumnMapping.event_name || !currentColumnMapping.date) {
+                alert('Please map required fields: Student Name, Event Name, and Date.');
+                return;
+            }
+
+            document.getElementById('column-mapping-box').style.display = 'none';
+            applyMappingAndReady();
+        }
+
+        function applyMappingAndReady() {
+            normalizedParticipantRows = ColumnMapper.normalizeRows(parsedSpreadsheetData.rows, currentColumnMapping);
+            
+            document.getElementById('data-row-count-badge').textContent = normalizedParticipantRows.length;
+            document.getElementById('data-summary-banner').style.display = 'flex';
+        }
+
+        // Step 4: Batch Generation
+        async function startBatchGeneration() {
+            if (!selectedTemplateObj) {
+                alert('Please select a certificate template first.');
+                return;
+            }
+            if (normalizedParticipantRows.length === 0) {
+                alert('No participant data found.');
+                return;
+            }
+
+            const certType = document.getElementById('cert-type-select').value;
+            const customWording = document.getElementById('wording-template-input').value;
+            const progressBox = document.getElementById('generation-progress-box');
+            const fillBar = document.getElementById('progress-fill-bar');
+            const textLabel = document.getElementById('progress-text-label');
+            const grid = document.getElementById('generated-certs-grid');
+            const zipBtn = document.getElementById('download-zip-btn');
+
+            document.getElementById('step-4-section').style.display = 'block';
+            progressBox.style.display = 'block';
+            zipBtn.style.display = 'none';
+            grid.innerHTML = '';
+
+            window.scrollTo({ top: document.getElementById('step-4-section').offsetTop - 80, behavior: 'smooth' });
+
+            lastGeneratedCertResults = await CertificateGenerator.batchGenerate(
+                selectedTemplateObj,
+                certType,
+                normalizedParticipantRows,
+                (current, total) => {
+                    const pct = Math.round((current / total) * 100);
+                    fillBar.style.width = `${pct}%`;
+                    textLabel.textContent = `Generating: ${current} / ${total}`;
+                },
+                customWording
+            );
+
+            // Render Results Grid
+            lastGeneratedCertResults.forEach((item, index) => {
+                const card = document.createElement('div');
+                card.className = 'card';
+                card.style.padding = '1rem';
+                card.style.marginBottom = '0';
+
+                const thumbWrapper = document.createElement('div');
+                thumbWrapper.style.cssText = 'max-width: 100%; border: 1px solid var(--border-color); border-radius: 6px; overflow: hidden; margin-bottom: 0.75rem;';
+                item.canvas.style.width = '100%';
+                item.canvas.style.height = 'auto';
+                thumbWrapper.appendChild(item.canvas);
+
+                card.appendChild(thumbWrapper);
+
+                const info = document.createElement('div');
+                info.innerHTML = `
+                    <div style="font-weight: 700; font-size: 1.05rem;">${item.participant.student_name}</div>
+                    <div style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 0.75rem;">Verification Key: ${item.verificationKey}</div>
+                    <div style="display: flex; gap: 0.5rem;">
+                        <button class="btn btn-secondary btn-sm" onclick="CertificateGenerator.downloadSinglePNG(lastGeneratedCertResults[${index}].canvas, '${item.participant.student_name.replace(/'/g, "\\'")}')">PNG</button>
+                        <button class="btn btn-secondary btn-sm" onclick="CertificateGenerator.downloadSinglePDF(lastGeneratedCertResults[${index}].canvas, '${item.participant.student_name.replace(/'/g, "\\'")}')">PDF</button>
+                    </div>
+                `;
+                card.appendChild(info);
+                grid.appendChild(card);
+            });
+
+            progressBox.style.display = 'none';
+            zipBtn.style.display = 'inline-flex';
+            AppUI.showToast('Batch generation completed successfully!', 'success');
+        }
+
+        function downloadAllZipClick() {
+            CertificateGenerator.downloadAllAsZip(lastGeneratedCertResults);
+        }
+    </script>
+</body>
+</html>
