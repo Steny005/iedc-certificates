@@ -6,7 +6,7 @@
 
 const StorageManager = (() => {
     const DB_NAME = 'CertificateSystemDB';
-    const DB_VERSION = 1;
+    const DB_VERSION = 2;
     const STORE_NAME = 'templates';
 
     let dbInstance = null;
