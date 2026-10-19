@@ -1,4 +1,4 @@
-Here is a comprehensive `README.md` tailored for your repository based on the structure and files present in [Steny005/iedc-certificates](https://github.com/Steny005/iedc-certificates).
+https://github.com/Steny005/iedc-certificates
 
 ---
 
